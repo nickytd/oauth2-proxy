@@ -532,6 +532,8 @@ type LegacyProvider struct {
 	CodeChallengeMethod string `flag:"code-challenge-method" cfg:"code_challenge_method"`
 	// Provided for legacy reasons, to be dropped in newer version see #1667
 	ForceCodeChallengeMethod string `flag:"force-code-challenge-method" cfg:"force_code_challenge_method"`
+	TLSClientCertFile        string `flag:"tls-client-cert-file" cfg:"tls_client_cert_file"`
+	TLSClientKeyFile         string `flag:"tls-client-key-file" cfg:"tls_client_key_file"`
 }
 
 func legacyProviderFlagSet() *pflag.FlagSet {
@@ -588,6 +590,13 @@ func legacyProviderFlagSet() *pflag.FlagSet {
 	flagSet.String("user-id-claim", OIDCEmailClaim, "(DEPRECATED for `oidc-email-claim`) which claim contains the user ID")
 	flagSet.StringSlice("allowed-group", []string{}, "restrict logins to members of this group (may be given multiple times)")
 	flagSet.StringSlice("allowed-role", []string{}, "(keycloak-oidc) restrict logins to members of these roles (may be given multiple times)")
+
+	// adding client cert file path for mTLS authentication
+	flagSet.String("tls-client-cert-file", "",
+		"path to the client cert file in PEM format used for mTLS Provider authentication")
+	// adding client cert key file path for mTLS authentication
+	flagSet.String("tls-client-key-file", "",
+		"path to the client key file in PEM format used for mTLS Provider authentication")
 
 	return flagSet
 }
@@ -653,6 +662,8 @@ func (l *LegacyProvider) convert() (Providers, error) {
 		Scope:               l.Scope,
 		AllowedGroups:       l.AllowedGroups,
 		CodeChallengeMethod: l.CodeChallengeMethod,
+		TLSCertFile:         l.TLSClientCertFile,
+		TLSKeyFile:          l.TLSClientKeyFile,
 	}
 
 	// This part is out of the switch section for all providers that support OIDC

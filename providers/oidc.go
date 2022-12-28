@@ -10,6 +10,7 @@ import (
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/apis/options"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/apis/sessions"
 	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/logger"
+	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/util"
 	"golang.org/x/oauth2"
 )
 
@@ -50,11 +51,21 @@ func (p *OIDCProvider) GetLoginURL(redirectURI, state, nonce string, extraParams
 }
 
 // Redeem exchanges the OAuth2 authentication token for an ID token
-func (p *OIDCProvider) Redeem(ctx context.Context, redirectURL, code, codeVerifier string) (*sessions.SessionState, error) {
+func (p *OIDCProvider) Redeem(ctx context.Context, redirectURL, code, codeVerifier string) (*sessions.SessionState,
+	error) {
 	clientSecret, err := p.GetClientSecret()
 	if err != nil {
 		return nil, err
 	}
+
+	// here we can support mTLS for oidc provider
+	client, err := util.GetHTTPClient(p.TLSKeyFile, p.TLSCertFile, p.CAFiles...)
+	if err != nil {
+		return nil, err
+	}
+	// oauth2 library can leverage a http client supplied via the request context
+	// https://cs.opensource.google/go/x/oauth2/+/master:example_test.go
+	ctxWithClient := context.WithValue(ctx, oauth2.HTTPClient, client)
 
 	var opts []oauth2.AuthCodeOption
 	if codeVerifier != "" {
@@ -69,12 +80,12 @@ func (p *OIDCProvider) Redeem(ctx context.Context, redirectURL, code, codeVerifi
 		},
 		RedirectURL: redirectURL,
 	}
-	token, err := c.Exchange(ctx, code, opts...)
+	token, err := c.Exchange(ctxWithClient, code, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("token exchange failed: %v", err)
 	}
 
-	return p.createSession(ctx, token, false)
+	return p.createSession(ctxWithClient, token, false)
 }
 
 // EnrichSession is called after Redeem to allow providers to enrich session fields

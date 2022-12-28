@@ -76,6 +76,9 @@ func newProviderDataFromConfig(providerConfig options.Provider) (*ProviderData, 
 		ClientID:         providerConfig.ClientID,
 		ClientSecret:     providerConfig.ClientSecret,
 		ClientSecretFile: providerConfig.ClientSecretFile,
+		TLSCertFile:      providerConfig.TLSCertFile,
+		TLSKeyFile:       providerConfig.TLSKeyFile,
+		CAFiles:          providerConfig.CAFiles,
 	}
 
 	needsVerifier, err := providerRequiresOIDCProviderVerifier(providerConfig.Type)

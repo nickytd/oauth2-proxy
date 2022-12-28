@@ -56,6 +56,16 @@ type ProviderData struct {
 	getAuthorizationHeaderFunc func(string) http.Header
 	loginURLParameterDefaults  url.Values
 	loginURLParameterOverrides map[string]*regexp.Regexp
+
+	// If defined, designates a file path to client certificate.
+	// It is used for setting up mTLS with the Provider
+	TLSKeyFile string
+	// If defined, designates a file path to client certificate.
+	// It is used for setting up mTLS with the Provider.
+	TLSCertFile string
+	// Provider CAs
+	// These are used to construct http client to the provider
+	CAFiles []string
 }
 
 // Data returns the ProviderData

@@ -191,7 +191,8 @@ func makeTestCertFile(t *testing.T, pem, dir string) *os.File {
 
 func TestGetCertPool_NoRoots(t *testing.T) {
 	_, err := GetCertPool([]string(nil))
-	assert.Error(t, err, "invalid empty list of Root CAs file paths")
+	assert.NoError(t, err)
+	// assert.Error(t, err, "invalid empty list of Root CAs file paths")
 }
 
 func TestGetCertPool(t *testing.T) {

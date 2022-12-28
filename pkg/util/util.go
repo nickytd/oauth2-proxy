@@ -3,22 +3,36 @@ package util
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
 	"math/big"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/oauth2-proxy/oauth2-proxy/v7/pkg/logger"
 )
 
 func GetCertPool(paths []string) (*x509.CertPool, error) {
+	var (
+		pool *x509.CertPool
+		err  error
+	)
+
 	if len(paths) == 0 {
-		return nil, fmt.Errorf("invalid empty list of Root CAs file paths")
+		pool, err = x509.SystemCertPool()
+		if err != nil {
+			return nil, fmt.Errorf("error getting system default root CAs")
+		}
+		logger.Println("loaded system default root CAs")
+		return pool, nil
 	}
-	pool := x509.NewCertPool()
+	pool = x509.NewCertPool()
 	for _, path := range paths {
 		// Cert paths are a configurable option
 		data, err := os.ReadFile(path) // #nosec G304
@@ -29,6 +43,7 @@ func GetCertPool(paths []string) (*x509.CertPool, error) {
 			return nil, fmt.Errorf("loading certificate authority (%s) failed", path)
 		}
 	}
+	logger.Println("created a new root CAs pool")
 	return pool, nil
 }
 
@@ -161,4 +176,41 @@ func RemoveDuplicateStr(strSlice []string) []string {
 		}
 	}
 	return list
+}
+
+func GetHTTPClient(keyFile, certFile string, cas ...string) (*http.Client, error) {
+	if keyFile == "" || certFile == "" {
+		return http.DefaultClient, nil
+	}
+
+	var (
+		pool   *x509.CertPool
+		config = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		crt tls.Certificate
+		err error
+	)
+
+	pool, err = GetCertPool(cas)
+	if err != nil {
+		return nil, err
+	}
+
+	config.RootCAs = pool
+
+	if certFile != "" && keyFile != "" {
+		crt, err = tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, err
+		}
+		config.Certificates = []tls.Certificate{crt}
+	}
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig = config
+
+	logger.Println("created a new http client for mTLS")
+	return &http.Client{Transport: transport}, nil
+
 }
